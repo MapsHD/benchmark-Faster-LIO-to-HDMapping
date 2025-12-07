@@ -1,5 +1,9 @@
 # faster-lio-converter
 
+## Example Dataset: 
+
+Download the dataset from [Bunker DVI Dataset](https://charleshamesse.github.io/bunker-dvi-dataset/)  
+
 ## Intended use 
 
 This small toolset allows to integrate SLAM solution provided by [faster-lio](https://github.com/gaoxiang12/faster-lio) with [HDMapping](https://github.com/MapsHD/HDMapping).
@@ -59,12 +63,6 @@ cd /test_ws/
 source ./devel/setup.sh # adjust to used shell
 rosrun faster-lio-to-hdmapping listener <recorded_bag> <output_dir>
 ```
-
-## Example:
-
-Download the dataset from [NTU-VIRAL](https://ntu-aris.github.io/ntu_viral_dataset/)
-For this example, download eee_03.
-
 
 ## Modify
 ```shell

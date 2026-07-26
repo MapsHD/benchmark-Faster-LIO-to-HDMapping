@@ -3,7 +3,8 @@
 IMAGE_NAME='faster-lio_noetic'
 TMUX_SESSION='ros1_session'
 
-DATASET_CONTAINER_PATH='/ros_ws/dataset/recorded-faster-lio.bag'
+DATASET_CONTAINER_PATH='/ros_ws/dataset/native.bag'
+CONVERTED_BAG_CONTAINER='/ros_ws/recordings/converted-velodyne.bag'
 BAG_OUTPUT_CONTAINER='/ros_ws/recordings'
 
 RECORDED_BAG_NAME="recorded-faster-lio.bag"
@@ -57,13 +58,26 @@ echo "Output dir: $BAG_OUTPUT_HOST"
 
 xhost +local:docker >/dev/null
 
+# Faster-LIO has no native Hesai handler (AviaHandler reads livox_ros_driver
+# CustomMsg directly). Convert the native bag's /hesai/pandar into the
+# velodyne_ros::Point layout its existing VELO32 handler already reads,
+# using the converter baked into the image (see tools/offline_hesai_to_velodyne.py).
+echo "=== Converting native bag to velodyne format ==="
+docker run --rm \
+  -u 1000:1000 \
+  -v "$DATASET_HOST_PATH":"$DATASET_CONTAINER_PATH":ro \
+  -v "$BAG_OUTPUT_HOST":"$BAG_OUTPUT_CONTAINER" \
+  "$IMAGE_NAME" \
+  python3 /ros_ws/tools/offline_hesai_to_velodyne.py \
+    "$DATASET_CONTAINER_PATH" \
+    "$CONVERTED_BAG_CONTAINER"
+
 docker run -it --rm \
   --network host \
   -e DISPLAY=$DISPLAY \
   -e ROS_HOME=/tmp/.ros \
   -u 1000:1000 \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v "$DATASET_HOST_PATH":"$DATASET_CONTAINER_PATH":ro \
   -v "$BAG_OUTPUT_HOST":"$BAG_OUTPUT_CONTAINER" \
   "$IMAGE_NAME" \
   /bin/bash -c '
@@ -74,7 +88,7 @@ docker run -it --rm \
     tmux send-keys -t '"$TMUX_SESSION"' '\''sleep 5
 source /opt/ros/noetic/setup.bash
 source /ros_ws/devel/setup.bash
-roslaunch faster_lio mapping_avia.launch use_sim_time:=true
+roslaunch faster_lio mapping_velodyne.launch use_sim_time:=true
 '\'' C-m
 
     # ---------- PANEL 2: rosbag record ----------
@@ -93,7 +107,7 @@ echo "[record] exit"
 source /opt/ros/noetic/setup.bash
 source /ros_ws/devel/setup.bash
 echo "[play] start"
-rosbag play '"$DATASET_CONTAINER_PATH"' --clock; tmux wait-for -S BAG_DONE;
+rosbag play '"$CONVERTED_BAG_CONTAINER"' --clock; tmux wait-for -S BAG_DONE;
 echo "[play] done"
 '\'' C-m
 

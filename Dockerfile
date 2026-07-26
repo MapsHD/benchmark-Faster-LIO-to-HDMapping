@@ -53,6 +53,22 @@ RUN source /opt/ros/noetic/setup.bash && \
 WORKDIR /ros_ws
 
 COPY ./src ./src
+COPY ./tools ./tools
+
+# Oxford Spires (Hesai Pandar + Alphasense IMU): no native Hesai handler
+# upstream (AviaHandler reads livox_ros_driver::CustomMsg directly, no PC2
+# path). The dataset is pre-converted offline (see
+# tools/offline_hesai_to_velodyne.py, runnable inside this image) into a
+# PointCloud2 layout matching velodyne_ros::Point
+# (x,y,z,intensity,time[us],ring), played on /velodyne_points + /imu_data.
+# lidar_type is already 2 (VELO32, the ring/time-aware handler) in
+# config/velodyne.yaml -- only the topic names need to change.
+RUN sed -i \
+    -e 's|lid_topic:.*|lid_topic:  "/velodyne_points"|' \
+    -e 's|imu_topic:.*|imu_topic:  "/imu_data"|' \
+    src/faster-lio/config/velodyne.yaml
+
+RUN python3 -m pip install --no-cache-dir rosbags numpy
 
 RUN source /opt/ros/noetic/setup.bash && \
     source /ws_livox/devel/setup.bash && \
